@@ -1,5 +1,9 @@
 # VLAN Reachability Tester
 
+<p align="center">
+  <img src="logo.png" alt="VLAN Reachability Tester" width="180"/>
+</p>
+
 A portable Windows 11 desktop application for testing network reachability across VLANs in real time. No installation required — just download and run.
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
