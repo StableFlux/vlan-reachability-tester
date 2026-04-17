@@ -8,7 +8,7 @@ A portable Windows 11 desktop application for testing network reachability acros
 
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-GPLv3-blue)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-stableflux-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/stableflux)
 
 ---
@@ -172,4 +172,4 @@ A terminal-based version for Raspberry Pi is included at `Raspberry Pi/vlan_test
 
 ## License
 
-MIT — free to use, modify, and distribute.
+GNU General Public License v3.0 — free to use, modify, and distribute, but any derivative works must also be open source under the same licence. Commercial resale is not permitted.
