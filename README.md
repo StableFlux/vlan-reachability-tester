@@ -9,6 +9,7 @@ A portable Windows 11 desktop application for testing network reachability acros
 ![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-stableflux-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/stableflux)
 
 ---
 
