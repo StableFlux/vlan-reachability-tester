@@ -1,0 +1,22 @@
+# Personal config — contains your VLAN definitions, IP addresses, NIC selection
+vlan_config.json
+
+# Runtime output — contains ping results and IP addresses
+vlan_results.json
+vlan_matrix.txt
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Claude Code memory (local session data)
+.claude/
+
+# Compiled executable — distributed via GitHub Releases, not committed
+*.exe
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
