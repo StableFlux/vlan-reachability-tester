@@ -8,6 +8,16 @@ A portable Windows 11 desktop application for testing network reachability acros
 
 ---
 
+## Screenshots
+
+![Monitor Tab](monitor.png)
+*Monitor tab — live reachability matrix and current sweep status*
+
+![Config Tab](config.png)
+*Config tab — VLAN definitions, NIC selection, and ping settings*
+
+---
+
 ## Features
 
 - **Live reachability matrix** — colour-coded grid showing reachability between all configured VLANs
