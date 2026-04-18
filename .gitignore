@@ -10,6 +10,14 @@ build/
 dist/
 *.spec
 
+# MSIX build artifacts
+VLANPackage/
+*.msix
+*.msixupload
+
+# Visual Studio
+VLANReachabilityTester/
+
 # Claude Code memory (local session data)
 .claude/
 
