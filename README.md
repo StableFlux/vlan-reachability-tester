@@ -4,12 +4,19 @@
   <img src="logo.png" alt="VLAN Reachability Tester" width="180"/>
 </p>
 
-A portable Windows 11 desktop application for testing network reachability across VLANs in real time. No installation required — just download and run.
+Test network reachability across VLANs in real time. Ships as a portable Windows 11 desktop app with a live colour-coded matrix, and as a Linux CLI edition for any Linux system including Raspberry Pi.
 
-![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![License](https://img.shields.io/badge/license-GPLv3-blue)
-[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-stableflux-orange?logo=buy-me-a-coffee)](https://buymeacoffee.com/stableflux)
+<p align="center">
+  <a href="https://apps.microsoft.com/detail/9MX63VW05CPF"><img src="https://img.shields.io/badge/Microsoft%20Store-Install-0078D4?logo=microsoft-store&logoColor=white" alt="Microsoft Store"/></a>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-blue" alt="Platform"/>
+  <img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python"/>
+  <img src="https://img.shields.io/badge/license-GPLv3-blue" alt="License"/>
+</p>
+
+<p align="center">
+  If this app is useful to you, a coffee is always appreciated ❤<br><br>
+  <a href="https://buymeacoffee.com/stableflux"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=stableflux&button_colour=FF813F&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee"/></a>
+</p>
 
 ---
 
@@ -39,7 +46,12 @@ A portable Windows 11 desktop application for testing network reachability acros
 
 ## Download
 
-Download the latest `VLAN Tester.exe` from the [Releases](https://github.com/StableFlux/vlan-reachability-tester/releases) page.
+**Windows** — two options:
+
+- **[Install from the Microsoft Store](https://apps.microsoft.com/detail/9MX63VW05CPF)** — recommended, gets automatic updates
+- **[Grab the latest `.exe` from GitHub Releases](https://github.com/StableFlux/vlan-reachability-tester/releases)** — fully portable, no installation
+
+**Linux** — clone the repo or download the `Linux CLI/` folder. See the [Linux CLI Version](#linux-cli-version) section below.
 
 ---
 
@@ -236,6 +248,16 @@ An example config showing the schema is provided in `Linux CLI/vlan_config.examp
 - Python 3.10+
 - `reportlab` (PDF report generation)
 - tkinter is included with Python
+
+---
+
+## Support the project
+
+This app is free and open source. If it's saved you some time or helped you debug a tricky VLAN issue, consider buying me a coffee — it keeps the updates coming!
+
+<p align="center">
+  <a href="https://buymeacoffee.com/stableflux"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=stableflux&button_colour=FF813F&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee"/></a>
+</p>
 
 ---
 
