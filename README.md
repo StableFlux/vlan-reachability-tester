@@ -114,10 +114,10 @@ Persistent grid showing historical results for every source→destination VLAN p
 
 | Button | Action |
 |--------|--------|
-| **⏸ PAUSE / ▶ RESUME** | Pause or resume the sweep |
+| **⏸ RUNNING / ▶ RESUME** | Green when actively sweeping, yellow when paused — click to toggle |
 | **🔄 RENEW IP** | Pauses sweep, runs ipconfig release/renew on selected adapter, waits for new IP |
-| **🗑 CLEAR MATRIX** | Clears the reachability matrix and resets sweep count |
 | **💾 REPORT** | Opens a Save As dialog and generates a branded PDF report of the current results |
+| **🗑 CLEAR MATRIX** | Clears the reachability matrix and resets sweep count |
 
 ---
 

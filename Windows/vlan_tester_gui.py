@@ -701,19 +701,19 @@ class VlanTesterApp:
         self._monitor_btn_frame = tk.Frame(tab_bar, bg=BG_PANEL)
         self._monitor_btn_frame.pack(side="right", fill="y", padx=(0, 8))
 
-        tk.Button(self._monitor_btn_frame, text="💾  REPORT",
-                  bg=CLR_CYAN, fg=BG_DARK,
-                  command=self._do_export, **bkw).pack(side="right", pady=7, padx=(4, 0))
         tk.Button(self._monitor_btn_frame, text="🗑  CLEAR MATRIX",
                   bg=BG_PANEL, fg=CLR_RED,
                   command=self._clear_matrix, **bkw).pack(side="right", pady=7, padx=(4, 0))
-        self.pause_btn = tk.Button(self._monitor_btn_frame, text="⏸  PAUSE",
-                                   bg=CLR_YELLOW, fg=BG_DARK,
-                                   command=self._toggle_pause, **bkw)
-        self.pause_btn.pack(side="right", pady=7, padx=(4, 0))
+        tk.Button(self._monitor_btn_frame, text="💾  REPORT",
+                  bg=CLR_CYAN, fg=BG_DARK,
+                  command=self._do_export, **bkw).pack(side="right", pady=7, padx=(4, 0))
         tk.Button(self._monitor_btn_frame, text="🔄  RENEW IP",
                   bg=CLR_PURPLE, fg=BG_DARK,
                   command=self._renew_ip, **bkw).pack(side="right", pady=7, padx=(4, 0))
+        self.pause_btn = tk.Button(self._monitor_btn_frame, text="⏸  RUNNING",
+                                   bg=CLR_GREEN, fg=BG_DARK,
+                                   command=self._toggle_pause, **bkw)
+        self.pause_btn.pack(side="right", pady=7, padx=(4, 0))
 
         # Config action button (right) — hidden when Monitor is active
         self._config_btn_frame = tk.Frame(tab_bar, bg=BG_PANEL)
@@ -1285,10 +1285,10 @@ class VlanTesterApp:
     def _toggle_pause(self):
         self.paused = not self.paused
         if self.paused:
-            self.pause_btn.config(text="▶  RESUME", bg=CLR_GREEN)
+            self.pause_btn.config(text="▶  RESUME", bg=CLR_YELLOW)
             self.status_lbl.config(text="● PAUSED", fg=CLR_YELLOW)
         else:
-            self.pause_btn.config(text="⏸  PAUSE", bg=CLR_YELLOW)
+            self.pause_btn.config(text="⏸  RUNNING", bg=CLR_GREEN)
             self.status_lbl.config(text="● ACTIVE", fg=CLR_GREEN)
 
     def _renew_ip(self):
