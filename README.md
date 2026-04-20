@@ -15,7 +15,7 @@ Test network reachability across VLANs in real time. Ships as a portable Windows
 
 <p align="center">
   If this app is useful to you, a coffee is always appreciated ❤<br><br>
-  <a href="https://buymeacoffee.com/stableflux"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=stableflux&button_colour=FF813F&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee"/></a>
+  <a href="https://buymeacoffee.com/stableflux"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="200"/></a>
 </p>
 
 ---
@@ -256,7 +256,7 @@ An example config showing the schema is provided in `Linux CLI/vlan_config.examp
 This app is free and open source. If it's saved you some time or helped you debug a tricky VLAN issue, consider buying me a coffee — it keeps the updates coming!
 
 <p align="center">
-  <a href="https://buymeacoffee.com/stableflux"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=stableflux&button_colour=FF813F&font_colour=ffffff&font_family=Cookie&outline_colour=000000&coffee_colour=FFDD00" alt="Buy Me a Coffee"/></a>
+  <a href="https://buymeacoffee.com/stableflux"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" width="200"/></a>
 </p>
 
 ---
