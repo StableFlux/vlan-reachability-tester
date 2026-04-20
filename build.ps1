@@ -1,4 +1,4 @@
-# VLAN Reachability Tester — one-command build script
+# VLAN Reachability Tester - one-command build script
 # Usage: powershell -ExecutionPolicy Bypass -File build.ps1
 # Optionally pass a version: build.ps1 -Version 1.2.0.0
 
@@ -6,33 +6,39 @@ param(
     [string]$Version = "1.0.0.0"
 )
 
-$repoDir   = $PSScriptRoot
-$srcDir    = "$repoDir\Windows"
+$repoDir    = $PSScriptRoot
+$srcDir     = "$repoDir\Windows"
 $packageDir = "$repoDir\VLANPackage"
 $assetsDir  = "$packageDir\Assets"
 $output     = "$repoDir\VLANReachabilityTester_$($Version)_x64.msix"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  VLAN Reachability Tester — Build $Version" -ForegroundColor Cyan
+Write-Host "  VLAN Reachability Tester - Build $Version" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── Step 1: PyInstaller ───────────────────────────────────────────────────────
+# Step 1: PyInstaller
 Write-Host "[1/3] Building exe with PyInstaller..." -ForegroundColor Yellow
 
 Push-Location $srcDir
-& pyinstaller --onefile --windowed --name "VLANReachabilityTester" vlan_tester_gui.py --distpath "$srcDir" --workpath "$srcDir\build" --specpath "$srcDir" 2>&1 | Tail -5
+& pyinstaller --onefile --windowed --name "VLANReachabilityTester" vlan_tester_gui.py `
+    --distpath "$srcDir" --workpath "$srcDir\build" --specpath "$srcDir" 2>&1 |
+    Select-Object -Last 5
 Pop-Location
+
+# Clean up PyInstaller build artifacts
+Remove-Item "$srcDir\build" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item "$srcDir\VLANReachabilityTester.spec" -Force -ErrorAction SilentlyContinue
 
 $exe = "$srcDir\VLANReachabilityTester.exe"
 if (-not (Test-Path $exe)) {
-    Write-Host "ERROR: PyInstaller failed — exe not found." -ForegroundColor Red
+    Write-Host "ERROR: PyInstaller failed - exe not found." -ForegroundColor Red
     exit 1
 }
 Write-Host "  Exe built: $exe" -ForegroundColor Green
 
-# ── Step 2: Package layout ────────────────────────────────────────────────────
+# Step 2: Package layout
 Write-Host "[2/3] Creating package layout..." -ForegroundColor Yellow
 
 Remove-Item $packageDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -101,7 +107,7 @@ $logo.Dispose()
 </Package>
 "@, [System.Text.UTF8Encoding]::new($false))
 
-# ── Step 3: Pack MSIX ─────────────────────────────────────────────────────────
+# Step 3: Pack MSIX
 Write-Host "[3/3] Packing MSIX..." -ForegroundColor Yellow
 
 $makeappx = Get-ChildItem "C:\Program Files (x86)\Microsoft Visual Studio\Shared\NuGetPackages\microsoft.windows.sdk.buildtools" -Recurse -Filter "makeappx.exe" -ErrorAction SilentlyContinue |
@@ -120,6 +126,9 @@ if (-not $makeappx) {
 if (Test-Path $output) { Remove-Item $output -Force }
 & $makeappx pack /d $packageDir /p $output /nv | Out-Null
 
+# Clean up the package staging folder
+Remove-Item $packageDir -Recurse -Force -ErrorAction SilentlyContinue
+
 Write-Host ""
 if (Test-Path $output) {
     Write-Host "========================================" -ForegroundColor Green
@@ -130,7 +139,6 @@ if (Test-Path $output) {
     Write-Host "Next: upload this file to Partner Center:" -ForegroundColor Cyan
     Write-Host "  https://partner.microsoft.com/dashboard" -ForegroundColor Cyan
     Write-Host ""
-    # Open the output folder
     Start-Process explorer.exe (Split-Path $output)
 } else {
     Write-Host "FAILED: MSIX was not created." -ForegroundColor Red
