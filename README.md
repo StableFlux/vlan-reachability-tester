@@ -187,9 +187,42 @@ The compiled exe will be in the `dist/` folder.
 
 ---
 
-## Raspberry Pi Version
+## Linux CLI Version
 
-A terminal-based version for Raspberry Pi is included at `Raspberry Pi/vlan_tester_pi.py`. It uses Linux ping flags (`-c`, `-W`) and requires root. Intended to be run directly in the Pi shell.
+A terminal-based version for any Linux system (Raspberry Pi, Ubuntu, Debian, Fedora, Arch, Raspberry Pi OS, etc.) is included at `Linux CLI/vlan_tester_cli.py`.
+
+### First run
+
+```bash
+sudo python3 "Linux CLI/vlan_tester_cli.py"
+```
+
+On the first run an interactive setup wizard walks you through adding your VLANs. Configuration is saved to `vlan_config.json` alongside the script.
+
+### Keys during a sweep
+
+| Key | Action |
+|-----|--------|
+| `SPACE` | Pause / resume the sweep |
+| `c` | Open the in-app config menu (add / remove / edit VLANs, change ping settings) |
+| `Ctrl+C` | Quit |
+
+### Re-running the wizard
+
+```bash
+sudo python3 "Linux CLI/vlan_tester_cli.py" --setup
+```
+
+### Compatibility
+
+The CLI uses standard POSIX modules and is validated on Ubuntu, Debian, Raspberry Pi OS, Fedora, and Arch. It detects system capabilities at startup and fails with clear guidance if something is missing:
+
+- **`ping` not found or lacks `-c`/`-W` flags** (BusyBox/Alpine) — tells you to install `iputils-ping`
+- **No permission to send ICMP** — suggests `sudo` or `setcap cap_net_raw+ep $(which ping)`
+- **Non-interactive shell** (piped, container, cron) — disables keyboard controls, keeps running with Ctrl+C to stop
+- **Local IP detection** cascades through `netifaces`, `hostname -I`, `ip`, `ifconfig`, and `socket` — works even on minimal systems
+
+An example config showing the schema is provided in `Linux CLI/vlan_config.example.json`.
 
 ---
 
