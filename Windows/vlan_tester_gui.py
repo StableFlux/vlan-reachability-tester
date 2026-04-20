@@ -14,8 +14,21 @@ import sys
 import json
 import threading
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
+
+import base64
+import io
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
+)
+
+from _logo import LOGO_B64
 
 # ─── File paths ───────────────────────────────────────────────────────────────
 
@@ -97,30 +110,271 @@ def save_results(results):
         pass
 
 
-def export_matrix_txt(vlan_names, results, filename=None):
-    if filename is None:
-        filename = os.path.join(BASE_DIR, "vlan_matrix.txt")
-    lbl_w = max((len(n) for n in vlan_names), default=4) + 1
-    lines = [
-        "VLAN REACHABILITY MATRIX",
-        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        "",
-        " " * lbl_w + "  " + "".join(f"{n[:7]:^8}" for n in vlan_names),
-        " " * lbl_w + "  " + "─" * (8 * len(vlan_names)),
+def export_report_pdf(vlan_names, vlans, results, current_vlan, my_ip, filename):
+    """Generate a branded PDF VLAN reachability status report."""
+    # Brand palette (matches the app's dark theme accent colours)
+    C_CYAN   = colors.HexColor("#0891b2")
+    C_DARK   = colors.HexColor("#0f172a")
+    C_PANEL  = colors.HexColor("#1e293b")
+    C_GREEN  = colors.HexColor("#16a34a")
+    C_RED    = colors.HexColor("#dc2626")
+    C_MUTED  = colors.HexColor("#64748b")
+    C_TEXT   = colors.HexColor("#0f172a")
+    C_BORDER = colors.HexColor("#cbd5e1")
+    C_STRIPE = colors.HexColor("#f8fafc")
+    CELL_GREEN = colors.HexColor("#dcfce7")
+    CELL_RED   = colors.HexColor("#fee2e2")
+    CELL_GREY  = colors.HexColor("#f1f5f9")
+
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    doc = SimpleDocTemplate(
+        filename, pagesize=A4,
+        leftMargin=16*mm, rightMargin=16*mm,
+        topMargin=16*mm, bottomMargin=18*mm,
+        title="VLAN Reachability Report",
+        author="VLAN Reachability Tester",
+    )
+
+    title_style = ParagraphStyle(
+        "Title", fontSize=22, textColor=C_CYAN, spaceAfter=2,
+        fontName="Helvetica-Bold", leading=26,
+    )
+    subtitle_style = ParagraphStyle(
+        "Subtitle", fontSize=10, textColor=C_MUTED, spaceAfter=8,
+        fontName="Helvetica",
+    )
+    section_style = ParagraphStyle(
+        "Section", fontSize=11, textColor=C_CYAN,
+        spaceAfter=6, spaceBefore=14, fontName="Helvetica-Bold",
+    )
+
+    story = []
+
+    # ── Header ────────────────────────────────────────────────────────────────
+    logo_img = Image(io.BytesIO(base64.b64decode(LOGO_B64)),
+                     width=22*mm, height=22*mm * 112 / 128)
+    header_text = [
+        Paragraph("VLAN REACHABILITY TESTER", title_style),
+        Paragraph(
+            f"Network Reachability Report &nbsp;&middot;&nbsp; Generated {now}",
+            subtitle_style,
+        ),
     ]
+    header = Table(
+        [[logo_img, header_text]],
+        colWidths=[26*mm, doc.width - 26*mm],
+    )
+    header.setStyle(TableStyle([
+        ("VALIGN",      (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING", (0,0), (-1,-1), 0),
+        ("RIGHTPADDING",(0,0), (-1,-1), 0),
+        ("TOPPADDING",  (0,0), (-1,-1), 0),
+        ("BOTTOMPADDING",(0,0),(-1,-1), 0),
+    ]))
+    story.append(header)
+
+    rule = Table([[""]], colWidths=[doc.width])
+    rule.setStyle(TableStyle([("LINEBELOW", (0,0), (-1,-1), 1.5, C_CYAN)]))
+    story.append(Spacer(1, 4))
+    story.append(rule)
+
+    # ── Summary / Current state ───────────────────────────────────────────────
+    n        = len(vlan_names)
+    total    = n * n
+    tested   = len(results)
+    reach    = sum(1 for v in results.values() if v.get("last") is True)
+    blocked  = sum(1 for v in results.values() if v.get("last") is False)
+    untested = total - tested
+
+    summary = [
+        ["CURRENT STATE", "", "SUMMARY", ""],
+        ["Source VLAN", current_vlan or "UNKNOWN", "VLANs configured", str(n)],
+        ["Local IP",    my_ip,                    "Pairs tested",     f"{tested} / {total}"],
+        ["",            "",                       "Reachable",        str(reach)],
+        ["",            "",                       "Blocked",          str(blocked)],
+        ["",            "",                       "Untested",         str(untested)],
+    ]
+    col = doc.width / 4
+    summary_tbl = Table(summary, colWidths=[col*0.9, col*1.1, col*0.9, col*1.1])
+    summary_tbl.setStyle(TableStyle([
+        ("FONTNAME",       (0,0), (-1,0),  "Helvetica-Bold"),
+        ("TEXTCOLOR",      (0,0), (-1,0),  C_CYAN),
+        ("FONTSIZE",       (0,0), (-1,0),  10),
+        ("BOTTOMPADDING",  (0,0), (-1,0),  5),
+        ("LINEBELOW",      (0,0), (1,0),   0.5, C_BORDER),
+        ("LINEBELOW",      (2,0), (3,0),   0.5, C_BORDER),
+        ("FONTNAME",       (0,1), (0,-1),  "Helvetica"),
+        ("FONTNAME",       (2,1), (2,-1),  "Helvetica"),
+        ("TEXTCOLOR",      (0,1), (0,-1),  C_MUTED),
+        ("TEXTCOLOR",      (2,1), (2,-1),  C_MUTED),
+        ("FONTNAME",       (1,1), (1,-1),  "Helvetica-Bold"),
+        ("FONTNAME",       (3,1), (3,-1),  "Helvetica-Bold"),
+        ("TEXTCOLOR",      (1,1), (1,-1),  C_TEXT),
+        ("TEXTCOLOR",      (3,1), (3,-1),  C_TEXT),
+        ("FONTSIZE",       (0,1), (-1,-1), 9),
+        ("VALIGN",         (0,0), (-1,-1), "MIDDLE"),
+        ("TOPPADDING",     (0,1), (-1,-1), 3),
+        ("BOTTOMPADDING",  (0,1), (-1,-1), 3),
+        ("LEFTPADDING",    (0,0), (-1,-1), 2),
+    ]))
+    story.append(Spacer(1, 10))
+    story.append(summary_tbl)
+
+    # ── VLAN Definitions ──────────────────────────────────────────────────────
+    story.append(Paragraph("VLAN DEFINITIONS", section_style))
+    def_data = [["VLAN", "SUBNET", "TARGET IP", "DEVICE"]]
+    for name in vlan_names:
+        v = vlans[name]
+        def_data.append([name, v["subnet"], v["target"], v.get("label", "")])
+
+    def_tbl = Table(def_data, colWidths=[col*0.7, col*0.9, col*0.9, col*1.5])
+    def_tbl.setStyle(TableStyle([
+        ("BACKGROUND",     (0,0), (-1,0),  C_PANEL),
+        ("TEXTCOLOR",      (0,0), (-1,0),  colors.white),
+        ("FONTNAME",       (0,0), (-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",       (0,0), (-1,0),  9),
+        ("FONTNAME",       (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE",       (0,1), (-1,-1), 9),
+        ("TEXTCOLOR",      (0,1), (-1,-1), C_TEXT),
+        ("FONTNAME",       (0,1), (0,-1),  "Helvetica-Bold"),
+        ("TEXTCOLOR",      (0,1), (0,-1),  C_CYAN),
+        ("GRID",           (0,0), (-1,-1), 0.3, C_BORDER),
+        ("VALIGN",         (0,0), (-1,-1), "MIDDLE"),
+        ("TOPPADDING",     (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING",  (0,0), (-1,-1), 5),
+        ("LEFTPADDING",    (0,0), (-1,-1), 8),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, C_STRIPE]),
+    ]))
+    story.append(def_tbl)
+
+    # ── Reachability Matrix ───────────────────────────────────────────────────
+    story.append(Paragraph("REACHABILITY MATRIX", section_style))
+    matrix_data = [[""] + [nm[:7] for nm in vlan_names]]
+    cell_colors = []
+    for i, frm in enumerate(vlan_names):
+        row = [frm]
+        for j, to in enumerate(vlan_names):
+            entry = results.get(f"{frm}->{to}")
+            if entry is None:
+                row.append("-")
+                cell_colors.append(("BACKGROUND", (j+1, i+1), (j+1, i+1), CELL_GREY))
+                cell_colors.append(("TEXTCOLOR",  (j+1, i+1), (j+1, i+1), C_MUTED))
+            elif entry.get("last"):
+                rtt = entry.get("rtt")
+                row.append(f"{rtt:.0f}" if rtt is not None else "OK")
+                cell_colors.append(("BACKGROUND", (j+1, i+1), (j+1, i+1), CELL_GREEN))
+                cell_colors.append(("TEXTCOLOR",  (j+1, i+1), (j+1, i+1), C_GREEN))
+            else:
+                row.append("X")
+                cell_colors.append(("BACKGROUND", (j+1, i+1), (j+1, i+1), CELL_RED))
+                cell_colors.append(("TEXTCOLOR",  (j+1, i+1), (j+1, i+1), C_RED))
+        matrix_data.append(row)
+
+    avail = doc.width - 70
+    cell_w = min(40, avail / max(n, 1))
+    mx_widths = [70] + [cell_w] * n
+    matrix_tbl = Table(matrix_data, colWidths=mx_widths, rowHeights=[22] + [22]*n)
+    mx_style = [
+        ("BACKGROUND",    (0,0), (-1,0),  C_PANEL),
+        ("TEXTCOLOR",     (1,0), (-1,0),  colors.white),
+        ("FONTNAME",      (0,0), (-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0), (-1,0),  8),
+        ("ALIGN",         (0,0), (-1,-1), "CENTER"),
+        ("FONTNAME",      (0,1), (0,-1),  "Helvetica-Bold"),
+        ("FONTSIZE",      (0,1), (0,-1),  8),
+        ("TEXTCOLOR",     (0,1), (0,-1),  colors.white),
+        ("BACKGROUND",    (0,1), (0,-1),  C_PANEL),
+        ("FONTNAME",      (1,1), (-1,-1), "Helvetica-Bold"),
+        ("FONTSIZE",      (1,1), (-1,-1), 8),
+        ("GRID",          (0,0), (-1,-1), 0.4, colors.white),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+    ]
+    mx_style.extend(cell_colors)
+    matrix_tbl.setStyle(TableStyle(mx_style))
+    story.append(matrix_tbl)
+
+    # Legend
+    legend = Table(
+        [[u"\u25A0", "Reachable", u"\u25A0", "Blocked", u"\u25A0", "Not yet tested"]],
+        colWidths=[10, 60, 10, 50, 10, 80],
+    )
+    legend.setStyle(TableStyle([
+        ("TEXTCOLOR",  (0,0), (0,0), C_GREEN),
+        ("TEXTCOLOR",  (2,0), (2,0), C_RED),
+        ("TEXTCOLOR",  (4,0), (4,0), C_MUTED),
+        ("TEXTCOLOR",  (1,0), (1,0), C_TEXT),
+        ("TEXTCOLOR",  (3,0), (3,0), C_TEXT),
+        ("TEXTCOLOR",  (5,0), (5,0), C_TEXT),
+        ("FONTSIZE",   (0,0), (0,0), 13),
+        ("FONTSIZE",   (2,0), (2,0), 13),
+        ("FONTSIZE",   (4,0), (4,0), 13),
+        ("FONTSIZE",   (1,0), (-1,-1), 9),
+        ("VALIGN",     (0,0), (-1,-1), "MIDDLE"),
+        ("LEFTPADDING",(0,0), (-1,-1), 2),
+    ]))
+    story.append(Spacer(1, 6))
+    story.append(legend)
+
+    # ── Detailed Results ──────────────────────────────────────────────────────
+    story.append(Paragraph("DETAILED RESULTS", section_style))
+    detail = [["SOURCE", "DESTINATION", "STATUS", "RTT", "LAST TESTED"]]
+    status_styles = []
     for frm in vlan_names:
-        row = f"{frm:<{lbl_w}}  "
         for to in vlan_names:
             entry = results.get(f"{frm}->{to}")
-            sym = "   ?   " if entry is None else ("   R   " if entry.get("last") else "   X   ")
-            row += sym
-        lines.append(row)
-    lines += ["", "R = Reachable   X = Blocked   ? = Not yet tested"]
-    try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-    except Exception:
-        pass
+            if entry is None:
+                status, rtt_s, time_s, sc = "Untested", "--", "--", C_MUTED
+            elif entry.get("last"):
+                rtt = entry.get("rtt")
+                rtt_s = f"{rtt:.1f} ms" if rtt is not None else "--"
+                status, time_s, sc = "Reachable", entry.get("time", "--"), C_GREEN
+            else:
+                status, rtt_s, time_s, sc = "Blocked", "--", entry.get("time", "--"), C_RED
+            detail.append([frm, to, status, rtt_s, time_s])
+            r = len(detail) - 1
+            status_styles.append(("TEXTCOLOR", (2, r), (2, r), sc))
+            status_styles.append(("FONTNAME",  (2, r), (2, r), "Helvetica-Bold"))
+
+    dt_widths = [col*0.7, col*0.85, col*0.8, col*0.7, col*0.95]
+    detail_tbl = Table(detail, colWidths=dt_widths, repeatRows=1)
+    dt_style = [
+        ("BACKGROUND",     (0,0), (-1,0),  C_PANEL),
+        ("TEXTCOLOR",      (0,0), (-1,0),  colors.white),
+        ("FONTNAME",       (0,0), (-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",       (0,0), (-1,0),  9),
+        ("FONTNAME",       (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE",       (0,1), (-1,-1), 8.5),
+        ("TEXTCOLOR",      (0,1), (-1,-1), C_TEXT),
+        ("FONTNAME",       (0,1), (0,-1),  "Helvetica-Bold"),
+        ("TEXTCOLOR",      (0,1), (0,-1),  C_CYAN),
+        ("GRID",           (0,0), (-1,-1), 0.3, C_BORDER),
+        ("VALIGN",         (0,0), (-1,-1), "MIDDLE"),
+        ("TOPPADDING",     (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING",  (0,0), (-1,-1), 4),
+        ("LEFTPADDING",    (0,0), (-1,-1), 8),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, C_STRIPE]),
+    ]
+    dt_style.extend(status_styles)
+    detail_tbl.setStyle(TableStyle(dt_style))
+    story.append(detail_tbl)
+
+    # ── Footer on every page ──────────────────────────────────────────────────
+    def _footer(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColor(C_BORDER)
+        canvas.setLineWidth(0.4)
+        canvas.line(16*mm, 14*mm, doc.pagesize[0] - 16*mm, 14*mm)
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.setFillColor(C_CYAN)
+        canvas.drawString(16*mm, 9*mm, "VLAN Reachability Tester")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(C_MUTED)
+        canvas.drawCentredString(doc.pagesize[0] / 2, 9*mm, now)
+        canvas.drawRightString(doc.pagesize[0] - 16*mm, 9*mm, f"Page {doc.page}")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
 
 # ─── Network Helpers ──────────────────────────────────────────────────────────
 
@@ -447,7 +701,7 @@ class VlanTesterApp:
         self._monitor_btn_frame = tk.Frame(tab_bar, bg=BG_PANEL)
         self._monitor_btn_frame.pack(side="right", fill="y", padx=(0, 8))
 
-        tk.Button(self._monitor_btn_frame, text="💾  EXPORT",
+        tk.Button(self._monitor_btn_frame, text="💾  REPORT",
                   bg=CLR_CYAN, fg=BG_DARK,
                   command=self._do_export, **bkw).pack(side="right", pady=7, padx=(4, 0))
         tk.Button(self._monitor_btn_frame, text="🗑  CLEAR MATRIX",
@@ -471,6 +725,12 @@ class VlanTesterApp:
         tk.Button(self._config_btn_frame, text="✔  Apply & Restart Sweep",
                   bg=CLR_GREEN, fg=BG_DARK, command=self._cfg_apply, **bkw,
                   ).pack(side="right", pady=7)
+        tk.Button(self._config_btn_frame, text="⬆  EXPORT",
+                  bg=CLR_CYAN, fg=BG_DARK, command=self._cfg_export_config,
+                  **bkw).pack(side="right", pady=7, padx=(0, 6))
+        tk.Button(self._config_btn_frame, text="⬇  IMPORT",
+                  bg=CLR_PURPLE, fg=BG_DARK, command=self._cfg_import_config,
+                  **bkw).pack(side="right", pady=7, padx=(0, 6))
 
         # Content frames
         self.monitor_tab = tk.Frame(self.root, bg=BG_DARK)
@@ -930,6 +1190,72 @@ class VlanTesterApp:
         self.config["selected_nic"] = alias
         self._nic_populate()
 
+    def _cfg_export_config(self):
+        default_name = f"vlan_config_{datetime.now().strftime('%Y-%m-%d')}.json"
+        filename = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Export VLAN Configuration",
+            defaultextension=".json",
+            initialfile=default_name,
+            filetypes=[("JSON Config", "*.json"), ("All Files", "*.*")],
+        )
+        if not filename:
+            return
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=2)
+            self.apply_msg.set(f"✓  Exported: {os.path.basename(filename)}")
+            self.root.after(4000, lambda: self.apply_msg.set(""))
+        except Exception as e:
+            messagebox.showerror("Export failed",
+                                 f"Could not export config:\n{e}", parent=self.root)
+
+    def _cfg_import_config(self):
+        filename = filedialog.askopenfilename(
+            parent=self.root,
+            title="Import VLAN Configuration",
+            defaultextension=".json",
+            filetypes=[("JSON Config", "*.json"), ("All Files", "*.*")],
+        )
+        if not filename:
+            return
+        try:
+            with open(filename, "r", encoding="utf-8") as f:
+                imported = json.load(f)
+        except Exception as e:
+            messagebox.showerror("Import failed",
+                f"Could not read file:\n{e}", parent=self.root)
+            return
+
+        if not isinstance(imported, dict) or "vlans" not in imported:
+            messagebox.showerror("Invalid config",
+                "File does not contain a valid VLAN configuration.",
+                parent=self.root)
+            return
+
+        existing = len(self.config.get("vlans", []))
+        if existing and not messagebox.askyesno(
+            "Replace configuration",
+            f"This will replace your current {existing} VLAN(s) with "
+            f"{len(imported.get('vlans', []))} imported VLAN(s).\n\nContinue?",
+            parent=self.root):
+            return
+
+        for k, v in DEFAULT_CONFIG.items():
+            imported.setdefault(k, v)
+        self.config = imported
+        save_config(self.config)
+
+        # Refresh Config tab widgets from new values
+        self._cfg_refresh_tree()
+        self._nic_populate()
+        self._interval_var.set(str(self.config.get("ping_interval", 5)))
+        self._timeout_var.set(str(self.config.get("ping_timeout", 2)))
+        self._count_var.set(str(self.config.get("ping_count", 1)))
+
+        # Activate the imported config straight away
+        self._cfg_apply()
+
     def _cfg_apply(self):
         try:
             self.config["ping_interval"] = max(1, int(self._interval_var.get()))
@@ -1027,11 +1353,27 @@ class VlanTesterApp:
         save_results(self.results)
 
     def _do_export(self):
-        save_results(self.results)
-        export_matrix_txt(self.vlan_names, self.results)
-        orig = self.stats_var.get()
-        self.stats_var.set("✓  Saved: vlan_results.json  &  vlan_matrix.txt")
-        self.root.after(2500, lambda: self.stats_var.set(orig))
+        default_name = f"VLAN_Report_{datetime.now().strftime('%Y-%m-%d_%H%M%S')}.pdf"
+        filename = filedialog.asksaveasfilename(
+            parent=self.root,
+            title="Save VLAN Report",
+            defaultextension=".pdf",
+            initialfile=default_name,
+            filetypes=[("PDF Report", "*.pdf"), ("All Files", "*.*")],
+        )
+        if not filename:
+            return
+        try:
+            export_report_pdf(
+                self.vlan_names, self.vlans, self.results,
+                self.current_vlan, self.my_ip, filename,
+            )
+            orig = self.stats_var.get()
+            self.stats_var.set(f"✓  Report saved: {os.path.basename(filename)}")
+            self.root.after(3000, lambda: self.stats_var.set(orig))
+        except Exception as e:
+            messagebox.showerror("Export failed",
+                                 f"Could not save report:\n{e}", parent=self.root)
 
     # ── Worker Thread ─────────────────────────────────────────────────────────
 
@@ -1207,7 +1549,6 @@ class VlanTesterApp:
     def on_close(self):
         self.running = False
         save_results(self.results)
-        export_matrix_txt(self.vlan_names, self.results)
         self.root.destroy()
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────

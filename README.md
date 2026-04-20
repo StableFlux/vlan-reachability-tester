@@ -30,8 +30,9 @@ A portable Windows 11 desktop application for testing network reachability acros
 - **NIC selection** — bind all testing to a specific network adapter
 - **IP renewal** — release and renew DHCP on the selected adapter without leaving the app
 - **Persistent results** — matrix retains history across sweeps with a manual clear button
-- **Export** — save results to `vlan_results.json` and `vlan_matrix.txt`
-- **Dark theme GUI** — built with tkinter, no external dependencies at runtime
+- **Branded PDF reports** — export a professionally formatted report with summary, VLAN definitions, colour-coded matrix, and detailed per-pair results
+- **Config import/export** — save and share VLAN configurations between machines as JSON
+- **Dark theme GUI** — built with tkinter
 - **Fully portable** — single `.exe`, no Python installation needed
 
 ---
@@ -75,6 +76,14 @@ Under **Network Interface**, click the adapter you want to use for testing. The 
 ### 5. Apply and start
 Click **✔ Apply & Restart Sweep** in the tab bar. The app switches to the **Monitor** tab and begins sweeping.
 
+### Importing and exporting configurations
+The Config tab also includes **⬇ IMPORT** and **⬆ EXPORT** buttons next to Apply:
+
+- **⬆ EXPORT** — saves the full configuration (VLANs, ping settings, selected NIC) to a JSON file you choose
+- **⬇ IMPORT** — loads a previously saved JSON file, confirms before replacing existing VLANs, and applies the new config automatically
+
+Useful for moving configurations between machines or keeping a backup before major changes.
+
 ---
 
 ## Monitor Tab
@@ -108,7 +117,22 @@ Persistent grid showing historical results for every source→destination VLAN p
 | **⏸ PAUSE / ▶ RESUME** | Pause or resume the sweep |
 | **🔄 RENEW IP** | Pauses sweep, runs ipconfig release/renew on selected adapter, waits for new IP |
 | **🗑 CLEAR MATRIX** | Clears the reachability matrix and resets sweep count |
-| **💾 EXPORT** | Saves results to `vlan_results.json` and `vlan_matrix.txt` |
+| **💾 REPORT** | Opens a Save As dialog and generates a branded PDF report of the current results |
+
+---
+
+## PDF Report
+
+The **💾 REPORT** button generates a professionally formatted PDF containing:
+
+- **Branded header** with the app logo and generation timestamp
+- **Summary panel** — current source VLAN, local IP, and sweep statistics
+- **VLAN definitions** — full list of every configured VLAN with subnet, target, and device label
+- **Reachability matrix** — colour-coded grid with RTT values in reachable cells
+- **Detailed results table** — every source→destination pair with status, RTT, and last-tested timestamp
+- **Footer** on every page with brand, timestamp, and page number
+
+Ideal for network documentation, change records, or sharing test results with colleagues.
 
 ---
 
@@ -135,17 +159,28 @@ Subnets must be entered with a **trailing dot**:
 
 ## Configuration File
 
-Settings are saved automatically to `vlan_config.json` in the same folder as the exe. You can copy this file alongside the exe to carry your configuration to another machine.
+Settings are saved automatically to `vlan_config.json` in the same folder as the exe. You can copy this file alongside the exe to carry your configuration to another machine, or use the in-app **⬆ EXPORT** / **⬇ IMPORT** buttons to move configurations around without touching the filesystem.
 
 ---
 
 ## Building from Source
 
-Requires Python 3.10+ and PyInstaller.
+Requires Python 3.10+ and the following packages:
 
 ```bash
-pip install pyinstaller
-pyinstaller --onefile --windowed --name "VLAN Tester" vlan_tester_gui.py
+pip install pyinstaller reportlab pillow
+```
+
+Then either run the full build pipeline (exe + MSIX for Store submission):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.0.0.0
+```
+
+Or build just the exe:
+
+```bash
+pyinstaller --onefile --windowed --name "VLANReachabilityTester" Windows/vlan_tester_gui.py
 ```
 
 The compiled exe will be in the `dist/` folder.
@@ -166,7 +201,8 @@ A terminal-based version for Raspberry Pi is included at `Raspberry Pi/vlan_test
 
 **To run from source:**
 - Python 3.10+
-- No third-party packages required (tkinter is included with Python)
+- `reportlab` (PDF report generation)
+- tkinter is included with Python
 
 ---
 
