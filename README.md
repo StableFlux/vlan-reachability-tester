@@ -33,13 +33,15 @@ Test network reachability across VLANs in real time. Ships as a portable Windows
 ## Features
 
 - **Live reachability matrix** — colour-coded grid showing reachability between all configured VLANs
+- **Matrix cell tooltips** — hover any cell to see last RTT, success rate, and min/avg/max over the last 20 pings
 - **Per-sweep status table** — shows current sweep results with RTT, target IP, and device label
 - **NIC selection** — bind all testing to a specific network adapter
 - **IP renewal** — release and renew DHCP on the selected adapter without leaving the app
 - **Persistent results** — matrix retains history across sweeps with a manual clear button
 - **Branded PDF reports** — export a professionally formatted report with summary, VLAN definitions, colour-coded matrix, and detailed per-pair results
 - **Config import/export** — save and share VLAN configurations between machines as JSON
-- **Dark theme GUI** — built with tkinter
+- **Light / Dark / System themes** — picks up your Windows mode at launch, with a matching native Win11 title bar
+- **Window state remembered** — size and position persist across sessions
 - **Fully portable** — single `.exe`, no Python installation needed
 
 ---
@@ -58,7 +60,7 @@ Test network reachability across VLANs in real time. Ships as a portable Windows
 ## Getting Started
 
 ### 1. Run the application
-Double-click `VLAN Tester.exe` — no installation needed. On first run a `vlan_config.json` file is created in the same folder to store your configuration.
+Double-click `VLAN Tester.exe` — no installation needed. On first run a `vlan_config.json` file is created to store your configuration (next to the exe when run standalone, or in `%LOCALAPPDATA%\VLANReachabilityTester\` when installed from the Microsoft Store).
 
 ### 2. Configure your VLANs
 Click the **Config** tab.
@@ -68,7 +70,7 @@ Under **VLAN Definitions**, click **＋ Add** to add each VLAN:
 | Field | Description | Example |
 |-------|-------------|---------|
 | VLAN Name | Short identifier | `TRUSTED` |
-| Subnet | Network prefix with trailing dot | `10.10.20.` |
+| Subnet | Network address (/24) | `10.10.20.0` |
 | Target IP | Device to ping on that VLAN | `10.10.20.1` |
 | Device Label | Friendly name for the target | `Core Switch` |
 
@@ -160,18 +162,25 @@ When you physically move your network connection to a different VLAN (cable chan
 
 ## Subnet Format
 
-Subnets must be entered with a **trailing dot**:
+Subnets are entered as a /24 network address:
 
-| Correct | Incorrect |
-|---------|-----------|
-| `10.10.20.` | `10.10.20.0/24` |
-| `192.168.10.` | `192.168.10.0` |
+| Accepted | Example |
+|---------|---------|
+| `10.10.20.0` | /24 network |
+| `192.168.10.0` | /24 network |
+
+CIDR notation (`/24`) is not required — the app treats the first three octets as the VLAN prefix and ignores the last octet.
 
 ---
 
 ## Configuration File
 
-Settings are saved automatically to `vlan_config.json` in the same folder as the exe. You can copy this file alongside the exe to carry your configuration to another machine, or use the in-app **⬆ EXPORT** / **⬇ IMPORT** buttons to move configurations around without touching the filesystem.
+Settings are saved automatically to `vlan_config.json`:
+
+- **Standalone `.exe`** — in the same folder as the exe
+- **Microsoft Store install** — in `%LOCALAPPDATA%\VLANReachabilityTester\` (the install location under `WindowsApps` is read-only, so user settings are stored in your profile)
+
+Use the in-app **⬆ EXPORT** / **⬇ IMPORT** buttons to move configurations between machines without touching the filesystem.
 
 ---
 
@@ -186,7 +195,7 @@ pip install pyinstaller reportlab pillow
 Then either run the full build pipeline (exe + MSIX for Store submission):
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.0.0.0
+powershell -ExecutionPolicy Bypass -File build.ps1 -Version 1.2.0.0
 ```
 
 Or build just the exe:

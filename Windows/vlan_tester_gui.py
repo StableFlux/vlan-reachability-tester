@@ -3,7 +3,10 @@
 """
 VLAN Reachability Tester — Windows 11 GUI Edition
 Run: python vlan_tester_gui.py
-Config is saved to vlan_config.json next to the exe / script.
+
+Frozen/Store installs store config and results in
+%LOCALAPPDATA%\\VLANReachabilityTester\\ (the app's install dir is read-only).
+Running from source keeps them next to the script.
 """
 
 import subprocess
@@ -12,6 +15,7 @@ import time
 import os
 import sys
 import json
+import shutil
 import threading
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -32,15 +36,82 @@ from _logo import LOGO_B64
 
 # ─── File paths ───────────────────────────────────────────────────────────────
 
-def _base_dir():
-    """Directory next to the exe (frozen) or the script."""
+APP_DIR_NAME = "VLANReachabilityTester"
+
+
+def _script_dir():
+    """Directory of the exe (frozen) or the source script."""
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
     return os.path.dirname(os.path.abspath(__file__))
 
-BASE_DIR     = _base_dir()
-CONFIG_FILE  = os.path.join(BASE_DIR, "vlan_config.json")
-RESULTS_FILE = os.path.join(BASE_DIR, "vlan_results.json")
+
+def _user_data_dir():
+    """Writable per-user data folder.
+
+    Frozen (Store/MSIX install): %LOCALAPPDATA%\\VLANReachabilityTester\\ —
+    the install dir under WindowsApps is read-only so we must write elsewhere.
+    Source checkout: the script directory, so dev workflow is unchanged.
+    """
+    if not getattr(sys, "frozen", False):
+        return _script_dir()
+    base = os.environ.get("LOCALAPPDATA") or os.path.expanduser(r"~\AppData\Local")
+    path = os.path.join(base, APP_DIR_NAME)
+    try:
+        os.makedirs(path, exist_ok=True)
+    except Exception as exc:
+        sys.stderr.write(f"[vlan-tester] Could not create {path}: {exc}\n")
+    return path
+
+
+SCRIPT_DIR   = _script_dir()
+DATA_DIR     = _user_data_dir()
+CONFIG_FILE  = os.path.join(DATA_DIR, "vlan_config.json")
+RESULTS_FILE = os.path.join(DATA_DIR, "vlan_results.json")
+
+
+def _migrate_legacy_file(filename):
+    """One-time copy of a legacy file from next-to-the-exe to the user data dir.
+
+    No-op when the data dir already has the file, or when we're running from
+    source (SCRIPT_DIR == DATA_DIR)."""
+    if SCRIPT_DIR == DATA_DIR:
+        return
+    new_path = os.path.join(DATA_DIR, filename)
+    if os.path.exists(new_path):
+        return
+    old_path = os.path.join(SCRIPT_DIR, filename)
+    if not os.path.exists(old_path):
+        return
+    try:
+        shutil.copy2(old_path, new_path)
+    except Exception as exc:
+        sys.stderr.write(f"[vlan-tester] Could not migrate {filename}: {exc}\n")
+
+
+_migrate_legacy_file("vlan_config.json")
+_migrate_legacy_file("vlan_results.json")
+
+_write_warnings_shown = set()
+
+
+def _warn_write_failure(path, exc):
+    """Report a write failure to stderr and raise a one-shot messagebox.
+
+    Previously these failures were swallowed silently, which hid the v1.1.0
+    Store-install persistence bug."""
+    sys.stderr.write(f"[vlan-tester] Failed to write {path}: {exc}\n")
+    if path in _write_warnings_shown:
+        return
+    _write_warnings_shown.add(path)
+    try:
+        messagebox.showerror(
+            "Save failed",
+            f"Could not write to:\n{path}\n\n{exc}\n\n"
+            "Changes this session will not persist.",
+        )
+    except Exception:
+        pass
 
 DEFAULT_CONFIG = {
     "vlans": [],
@@ -48,26 +119,136 @@ DEFAULT_CONFIG = {
     "ping_timeout":  2,
     "ping_count":    1,
     "selected_nic":  None,   # None = auto-detect; otherwise the IP of the chosen NIC
+    "theme":         "system",   # "system" | "light" | "dark"
+    "window_geometry": None,      # e.g. "1200x800+100+50" — restored on next launch
 }
 
-# ─── Colour Palette ───────────────────────────────────────────────────────────
 
-BG_DARK    = "#0d1117"
-BG_PANEL   = "#161b22"
-BG_HEADER  = "#1f2937"
+def format_subnet(subnet):
+    """Display a stored prefix as a network address: '10.10.10.' -> '10.10.10.0'."""
+    if not subnet:
+        return subnet
+    return subnet + "0" if subnet.endswith(".") else subnet
 
-CLR_GREEN  = "#22c55e"
-CLR_RED    = "#ef4444"
-CLR_YELLOW = "#fbbf24"
-CLR_CYAN   = "#38bdf8"
-CLR_PURPLE = "#a78bfa"
-CLR_TEXT   = "#e2e8f0"
-CLR_MUTED  = "#64748b"
-CLR_BORDER = "#30363d"
 
-CELL_GREEN = "#14532d"
-CELL_RED   = "#7f1d1d"
-CELL_GREY  = "#1e293b"
+def parse_subnet(raw):
+    """Accept '10.10.10.0' or '10.10.10.' from user input and normalise to the
+    trailing-dot prefix form used internally for IP-startswith matching."""
+    s = raw.strip()
+    if not s:
+        return s
+    if s.endswith(".0"):
+        return s[:-1]   # 10.10.10.0 -> 10.10.10.
+    if not s.endswith("."):
+        return s + "."
+    return s
+
+# ─── Theme Palettes ───────────────────────────────────────────────────────────
+# Two palettes. A selection is resolved at startup from the saved config
+# (default "system" reads the Windows app theme) and the chosen palette is
+# blitted into the module globals (BG_DARK, CLR_GREEN, ...). Widgets look up
+# these names at construction time, so changing theme requires an app restart
+# — _cfg_apply offers to relaunch when the user picks a new theme.
+
+_PALETTE_DARK = {
+    "BG_DARK":    "#0d1117",
+    "BG_PANEL":   "#161b22",
+    "BG_HEADER":  "#1f2937",
+    "CLR_GREEN":  "#22c55e",
+    "CLR_RED":    "#ef4444",
+    "CLR_YELLOW": "#fbbf24",
+    "CLR_CYAN":   "#38bdf8",
+    "CLR_PURPLE": "#a78bfa",
+    "CLR_TEXT":   "#e2e8f0",
+    "CLR_MUTED":  "#64748b",
+    "CLR_BORDER": "#30363d",
+    "CELL_GREEN": "#14532d",
+    "CELL_RED":   "#7f1d1d",
+    "CELL_GREY":  "#1e293b",
+    "TV_SELECT":  "#1e3a5f",   # Treeview selection background
+    "SELF_TAG":   "#86efac",   # "this is my VLAN" row highlight
+}
+
+# Mirrors the PDF export palette so screen and print look consistent.
+_PALETTE_LIGHT = {
+    "BG_DARK":    "#f8fafc",
+    "BG_PANEL":   "#ffffff",
+    "BG_HEADER":  "#e2e8f0",
+    "CLR_GREEN":  "#16a34a",
+    "CLR_RED":    "#dc2626",
+    "CLR_YELLOW": "#d97706",
+    "CLR_CYAN":   "#0891b2",
+    "CLR_PURPLE": "#7c3aed",
+    "CLR_TEXT":   "#0f172a",
+    "CLR_MUTED":  "#64748b",
+    "CLR_BORDER": "#cbd5e1",
+    "CELL_GREEN": "#dcfce7",
+    "CELL_RED":   "#fee2e2",
+    "CELL_GREY":  "#f1f5f9",
+    "TV_SELECT":  "#bae6fd",
+    "SELF_TAG":   "#15803d",
+}
+
+
+def _windows_uses_light_theme():
+    """Return True/False for Windows app theme, or None if unknown."""
+    try:
+        import winreg
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        ) as key:
+            val, _ = winreg.QueryValueEx(key, "AppsUseLightTheme")
+            return bool(val)
+    except OSError:
+        return None
+
+
+def resolve_theme(setting):
+    """Translate a config setting ('system'|'light'|'dark') to 'light' or 'dark'."""
+    if setting == "light":
+        return "light"
+    if setting == "dark":
+        return "dark"
+    return "light" if _windows_uses_light_theme() else "dark"
+
+
+_active_theme = "dark"
+
+
+def apply_palette(theme_name):
+    """Blit the chosen palette into this module's globals."""
+    global _active_theme
+    _active_theme = "light" if theme_name == "light" else "dark"
+    palette = _PALETTE_LIGHT if _active_theme == "light" else _PALETTE_DARK
+    globals().update(palette)
+
+
+def apply_titlebar_theme(root):
+    """Match the Win11 title bar to the active theme. No-op on non-Windows
+    and on Windows builds that don't implement the DWM attribute."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+        hwnd = int(root.wm_frame(), 16)
+        value = ctypes.c_int(1 if _active_theme == "dark" else 0)
+        # DWMWA_USE_IMMERSIVE_DARK_MODE is attribute 20 on Win10 20H1+ / Win11.
+        # Earlier 20H1 insider builds (19041 range) used attribute 19 — fall
+        # back if the first call fails.
+        res = ctypes.windll.dwmapi.DwmSetWindowAttribute(
+            hwnd, 20, ctypes.byref(value), ctypes.sizeof(value),
+        )
+        if res != 0:
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 19, ctypes.byref(value), ctypes.sizeof(value),
+            )
+    except Exception:
+        pass
+
+
+# Apply dark as a safe default at import time; main() re-applies from config.
+apply_palette("dark")
 
 # ─── Config I/O ───────────────────────────────────────────────────────────────
 
@@ -88,8 +269,8 @@ def save_config(config):
     try:
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        _warn_write_failure(CONFIG_FILE, exc)
 
 
 def load_results():
@@ -106,8 +287,8 @@ def save_results(results):
     try:
         with open(RESULTS_FILE, "w", encoding="utf-8") as f:
             json.dump(results, f, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        _warn_write_failure(RESULTS_FILE, exc)
 
 
 def export_report_pdf(vlan_names, vlans, results, current_vlan, my_ip, filename):
@@ -226,7 +407,7 @@ def export_report_pdf(vlan_names, vlans, results, current_vlan, my_ip, filename)
     def_data = [["VLAN", "SUBNET", "TARGET IP", "DEVICE"]]
     for name in vlan_names:
         v = vlans[name]
-        def_data.append([name, v["subnet"], v["target"], v.get("label", "")])
+        def_data.append([name, format_subnet(v["subnet"]), v["target"], v.get("label", "")])
 
     def_tbl = Table(def_data, colWidths=[col*0.7, col*0.9, col*0.9, col*1.5])
     def_tbl.setStyle(TableStyle([
@@ -507,7 +688,7 @@ class VlanDialog(tk.Toplevel):
 
         fields = [
             ("VLAN Name",   "name",   initial.get("name",   "")),
-            ("Subnet",      "subnet", initial.get("subnet", "")),
+            ("Subnet",      "subnet", format_subnet(initial.get("subnet", ""))),
             ("Target IP",   "target", initial.get("target", "")),
             ("Device Label","label",  initial.get("label",  "")),
         ]
@@ -530,7 +711,7 @@ class VlanDialog(tk.Toplevel):
 
         # Hint row
         tk.Label(
-            self, text='Subnet e.g. "192.168.10."  (trailing dot)',
+            self, text='Subnet e.g. "192.168.10.0"',
             font=("Consolas", 8), fg=CLR_MUTED, bg=BG_HEADER,
         ).grid(row=len(fields), column=0, columnspan=2, padx=14, pady=(0, 4))
 
@@ -553,18 +734,17 @@ class VlanDialog(tk.Toplevel):
 
     def _on_save(self):
         name   = self.vars["name"].get().strip().upper()
-        subnet = self.vars["subnet"].get().strip()
+        subnet_raw = self.vars["subnet"].get().strip()
         target = self.vars["target"].get().strip()
         label  = self.vars["label"].get().strip()
 
-        if not name or not subnet or not target:
+        if not name or not subnet_raw or not target:
             messagebox.showwarning("Missing fields",
                                    "Name, Subnet, and Target IP are required.",
                                    parent=self)
             return
 
-        if not subnet.endswith("."):
-            subnet += "."
+        subnet = parse_subnet(subnet_raw)
 
         self.result = {"name": name, "subnet": subnet, "target": target, "label": label}
         self.destroy()
@@ -586,6 +766,126 @@ def _section_label(parent, text):
         font=("Consolas", 10, "bold"),
         fg=CLR_CYAN, bg=BG_DARK,
     ).pack(anchor="w", pady=(0, 4))
+
+def _status_label(ok):
+    if ok is True:
+        return "REACHABLE"
+    if ok is False:
+        return "BLOCKED"
+    return "UNTESTED"
+
+
+class MatrixTooltip:
+    """Hover tooltip for a reachability matrix cell. Shows the ping history
+    stats we keep per (source, destination) pair."""
+
+    SHOW_DELAY_MS = 400
+
+    def __init__(self, app, canvas):
+        self.app = app
+        self.canvas = canvas
+        self.tip_window = None
+        self.after_id = None
+        self.current_cell = None
+
+        canvas.bind("<Motion>", self._on_motion)
+        canvas.bind("<Leave>", self._on_leave)
+
+    def _cell_from_xy(self, x, y):
+        names = self.app.vlan_names
+        if not names:
+            return None
+        lw, lh, px = self.app.LABEL_W, self.app.LABEL_H, self.app.CELL_PX
+        if x < lw or y < lh:
+            return None
+        col = (x - lw) // px
+        row = (y - lh) // px
+        if 0 <= col < len(names) and 0 <= row < len(names):
+            return (names[row], names[col])
+        return None
+
+    def _on_motion(self, event):
+        cell = self._cell_from_xy(event.x, event.y)
+        if cell == self.current_cell:
+            return
+        self._hide()
+        self.current_cell = cell
+        if cell is not None:
+            x_root, y_root = event.x_root, event.y_root
+            self.after_id = self.canvas.after(
+                self.SHOW_DELAY_MS,
+                lambda: self._show(x_root, y_root),
+            )
+
+    def _on_leave(self, _event):
+        self.current_cell = None
+        self._hide()
+
+    def _show(self, x_root, y_root):
+        if self.current_cell is None:
+            return
+        src, dst = self.current_cell
+        text = self._build_text(src, dst)
+
+        self.tip_window = tk.Toplevel(self.canvas)
+        self.tip_window.overrideredirect(True)
+        self.tip_window.attributes("-topmost", True)
+        self.tip_window.configure(bg=CLR_BORDER)
+        tk.Label(
+            self.tip_window, text=text,
+            font=("Consolas", 9),
+            fg=CLR_TEXT, bg=BG_PANEL,
+            justify="left", padx=10, pady=6,
+        ).pack(padx=1, pady=1)
+        self.tip_window.geometry(f"+{x_root + 14}+{y_root + 18}")
+
+    def _hide(self):
+        if self.after_id is not None:
+            try:
+                self.canvas.after_cancel(self.after_id)
+            except Exception:
+                pass
+            self.after_id = None
+        if self.tip_window is not None:
+            try:
+                self.tip_window.destroy()
+            except Exception:
+                pass
+            self.tip_window = None
+
+    def _build_text(self, src, dst):
+        key = f"{src}->{dst}"
+        with self.app._lock:
+            entry = dict(self.app.results.get(key, {}))
+        history = entry.get("history") or []
+
+        lines = [f"{src}  →  {dst}"]
+        if not history:
+            if not entry:
+                lines.append("No data yet")
+                return "\n".join(lines)
+            rtt = entry.get("rtt")
+            rtt_s = f"{rtt:.1f} ms" if rtt is not None else "—"
+            lines.append(f"Status:  {_status_label(entry.get('last'))}")
+            lines.append(f"Last:    {rtt_s}  at {entry.get('time', '?')}")
+            return "\n".join(lines)
+
+        total = len(history)
+        oks   = [h for h in history if h.get("ok") is True]
+        rtts  = [h["rtt"] for h in history if h.get("ok") is True and h.get("rtt") is not None]
+        rate  = int(round(100.0 * len(oks) / total))
+        last  = history[-1]
+        last_rtt = last.get("rtt")
+        last_rtt_s = f"{last_rtt:.1f} ms" if last_rtt is not None else "—"
+
+        lines.append(f"Status:  {_status_label(last.get('ok'))}")
+        lines.append(f"Last:    {last_rtt_s}  at {last.get('time', '?')}")
+        lines.append(f"Success: {len(oks)}/{total}  ({rate}%)")
+        if rtts:
+            avg = sum(rtts) / len(rtts)
+            lines.append(f"RTT avg: {avg:.1f} ms   (min {min(rtts):.1f}, max {max(rtts):.1f})")
+        return "\n".join(lines)
+
 
 # ─── Main Application ─────────────────────────────────────────────────────────
 
@@ -641,8 +941,27 @@ class VlanTesterApp:
     def _configure_window(self):
         self.root.title("VLAN Reachability Tester")
         self.root.configure(bg=BG_DARK)
-        self.root.geometry("1200x800")
         self.root.minsize(960, 640)
+
+        saved = self.config.get("window_geometry")
+        if saved and isinstance(saved, str):
+            try:
+                self.root.geometry(saved)
+            except Exception:
+                self.root.geometry("1200x800")
+        else:
+            self.root.geometry("1200x800")
+
+        # Paint the Win11 title bar to match the active theme.
+        self.root.update_idletasks()
+        apply_titlebar_theme(self.root)
+
+    def _snapshot_geometry(self):
+        """Capture window geometry into config so it persists across launches."""
+        try:
+            self.config["window_geometry"] = self.root.geometry()
+        except Exception:
+            pass
 
     def _derive_vlans(self):
         self.vlans      = {}
@@ -682,18 +1001,26 @@ class VlanTesterApp:
         tab_bar.pack(fill="x")
         tab_bar.pack_propagate(False)
 
-        # Tab buttons (left)
+        # Tab buttons (left). Each tab is a button stacked above a 3-px
+        # underline strip; the strip lights up in the accent colour for the
+        # active tab, giving an unambiguous selection cue in both themes.
         self._tab_btns = {}
+        self._tab_underlines = {}
         for name, label in [("monitor", "  ▶  Monitor  "), ("config", "  ⚙  Config  ")]:
+            wrap = tk.Frame(tab_bar, bg=BG_PANEL)
+            wrap.pack(side="left", fill="y")
             btn = tk.Button(
-                tab_bar, text=label,
+                wrap, text=label,
                 font=("Consolas", 11, "bold"),
                 relief="flat", bd=0, cursor="hand2",
                 padx=0, pady=0,
                 command=lambda n=name: self._show_tab(n),
             )
-            btn.pack(side="left", fill="y")
+            btn.pack(side="top", fill="both", expand=True)
+            underline = tk.Frame(wrap, bg=BG_PANEL, height=3)
+            underline.pack(side="bottom", fill="x")
             self._tab_btns[name] = btn
+            self._tab_underlines[name] = underline
 
         # Monitor action buttons (right) — hidden when Config is active
         bkw = dict(font=("Consolas", 10, "bold"), relief="flat",
@@ -757,10 +1084,12 @@ class VlanTesterApp:
             self._config_btn_frame.pack(side="right", fill="y", padx=(0, 8))
 
         for n, btn in self._tab_btns.items():
+            is_active = n == name
             btn.config(
-                bg=BG_HEADER if n == name else BG_PANEL,
-                fg=CLR_CYAN  if n == name else CLR_MUTED,
+                bg=BG_HEADER if is_active else BG_PANEL,
+                fg=CLR_CYAN  if is_active else CLR_MUTED,
             )
+            self._tab_underlines[n].config(bg=CLR_CYAN if is_active else BG_PANEL)
 
     # ── Monitor Tab ───────────────────────────────────────────────────────────
 
@@ -842,7 +1171,7 @@ class VlanTesterApp:
                         background=BG_HEADER, foreground=CLR_CYAN,
                         font=("Consolas", 10, "bold"), relief="flat")
         style.map("V.Treeview",
-                  background=[("selected", "#1e3a5f")],
+                  background=[("selected", TV_SELECT)],
                   foreground=[("selected", CLR_TEXT)])
 
         wrapper = tk.Frame(parent, bg=CLR_BORDER, bd=1)
@@ -866,7 +1195,7 @@ class VlanTesterApp:
         self.tree.tag_configure("reach",   foreground=CLR_GREEN)
         self.tree.tag_configure("block",   foreground=CLR_RED)
         self.tree.tag_configure("unknown", foreground=CLR_YELLOW)
-        self.tree.tag_configure("self",    foreground="#86efac")
+        self.tree.tag_configure("self",    foreground=SELF_TAG)
 
         self.row_ids = {}
         for name in self.vlan_names:
@@ -927,6 +1256,8 @@ class VlanTesterApp:
                 self.cell_rects[(frm, to)] = r
                 self.cell_texts[(frm, to)] = t
 
+        self.matrix_tooltip = MatrixTooltip(self, self.canvas)
+
         legend = tk.Frame(parent, bg=BG_DARK)
         legend.pack(anchor="w", pady=(8, 0))
         for color, label in [(CLR_GREEN, "Reachable"), (CLR_RED, "Blocked"), (CLR_MUTED, "Untested")]:
@@ -973,7 +1304,7 @@ class VlanTesterApp:
                         background=BG_HEADER, foreground=CLR_CYAN,
                         font=("Consolas", 10, "bold"), relief="flat")
         style.map("Cfg.Treeview",
-                  background=[("selected", "#1e3a5f")],
+                  background=[("selected", TV_SELECT)],
                   foreground=[("selected", CLR_TEXT)])
 
         self.cfg_tree = ttk.Treeview(
@@ -1091,6 +1422,53 @@ class VlanTesterApp:
                      fg=CLR_MUTED, bg=BG_DARK,
                      ).grid(row=row, column=2, sticky="w", padx=(4, 0), pady=6)
 
+        # ── Appearance (under ping settings) ──
+        tk.Frame(ping_col, bg=BG_DARK, height=14).pack(fill="x")
+        _section_label(ping_col, "APPEARANCE")
+
+        theme_choices = [
+            ("system", "System (follow Windows at launch)"),
+            ("light",  "Light"),
+            ("dark",   "Dark"),
+        ]
+        value_to_label = {v: l for v, l in theme_choices}
+        label_to_value = {l: v for v, l in theme_choices}
+
+        self._theme_var = tk.StringVar(value=self.config.get("theme", "system"))
+        theme_display = tk.StringVar(
+            value=value_to_label.get(self._theme_var.get(), theme_choices[0][1])
+        )
+
+        # Style the combobox to match the dark-panel look. Both the collapsed
+        # field and the dropdown listbox need separate treatment — the listbox
+        # is a Tk widget under the hood and only honours option_add.
+        style = ttk.Style()
+        style.configure("Theme.TCombobox",
+                        fieldbackground=BG_PANEL, background=BG_PANEL,
+                        foreground=CLR_TEXT, arrowcolor=CLR_CYAN,
+                        bordercolor=CLR_BORDER, lightcolor=CLR_BORDER,
+                        darkcolor=CLR_BORDER, selectbackground=BG_PANEL,
+                        selectforeground=CLR_TEXT)
+        style.map("Theme.TCombobox",
+                  fieldbackground=[("readonly", BG_PANEL)],
+                  foreground=[("readonly", CLR_TEXT)])
+        self.root.option_add("*TCombobox*Listbox.background", BG_PANEL)
+        self.root.option_add("*TCombobox*Listbox.foreground", CLR_TEXT)
+        self.root.option_add("*TCombobox*Listbox.selectBackground", CLR_CYAN)
+        self.root.option_add("*TCombobox*Listbox.selectForeground", BG_DARK)
+        self.root.option_add("*TCombobox*Listbox.font", ("Consolas", 10))
+
+        theme_combo = ttk.Combobox(
+            ping_col, textvariable=theme_display, state="readonly",
+            values=[l for _, l in theme_choices],
+            style="Theme.TCombobox", font=("Consolas", 10),
+        )
+        theme_combo.pack(anchor="w", fill="x", pady=(4, 6))
+        theme_combo.bind(
+            "<<ComboboxSelected>>",
+            lambda _e: self._theme_var.set(label_to_value.get(theme_display.get(), "system")),
+        )
+
 
     # ── Config actions ────────────────────────────────────────────────────────
 
@@ -1099,7 +1477,7 @@ class VlanTesterApp:
         for v in self.config.get("vlans", []):
             self.cfg_tree.insert(
                 "", "end",
-                values=(v["name"], v["subnet"], v["target"], v.get("label", "")),
+                values=(v["name"], format_subnet(v["subnet"]), v["target"], v.get("label", "")),
             )
 
     def _cfg_selected_index(self):
@@ -1266,7 +1644,24 @@ class VlanTesterApp:
                                    "Ping settings must be whole numbers.", parent=self.root)
             return
 
+        # Detect theme change — tkinter colors are baked in at widget construction,
+        # so a palette swap requires restarting the process.
+        old_theme = self.config.get("theme", "system")
+        new_theme = self._theme_var.get() if hasattr(self, "_theme_var") else old_theme
+        theme_changed = new_theme != old_theme
+        self.config["theme"] = new_theme
+
         save_config(self.config)
+
+        if theme_changed:
+            if messagebox.askyesno(
+                "Restart to apply theme",
+                "The theme change will take effect after a restart.\n\n"
+                "Restart the app now?",
+                parent=self.root,
+            ):
+                self._restart_app()
+                return
 
         # Restart sweep with new config
         self._derive_vlans()
@@ -1279,6 +1674,45 @@ class VlanTesterApp:
         self.apply_msg.set(f"✓  Saved — sweep restarted with {len(self.vlan_names)} VLANs.")
         self.root.after(3000, lambda: self.apply_msg.set(""))
         self._show_tab("monitor")
+
+    def _restart_app(self):
+        """Relaunch the app process so a new theme palette is applied."""
+        self.running = False
+        self._snapshot_geometry()
+        try:
+            save_config(self.config)
+            save_results(self.results)
+        except Exception:
+            pass
+        try:
+            # PyInstaller onefile sets _MEIPASS2 / _PYI_* env vars that tell a
+            # child exe to reuse the parent's _MEI<random> extraction dir. When
+            # the parent exits it tears that dir down, so a child that inherits
+            # these vars races the cleanup and fails with "Failed to import
+            # encodings module". Strip them so the child bootstraps cleanly
+            # into its own extraction dir.
+            env = os.environ.copy()
+            for key in list(env.keys()):
+                if key.startswith("_PYI") or key == "_MEIPASS2":
+                    env.pop(key, None)
+            if getattr(sys, "frozen", False):
+                subprocess.Popen(
+                    [sys.executable] + sys.argv[1:],
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    env=env,
+                    close_fds=True,
+                )
+            else:
+                subprocess.Popen([sys.executable] + sys.argv, env=env)
+        except Exception as exc:
+            messagebox.showerror(
+                "Restart failed",
+                f"Could not relaunch:\n{exc}\n\n"
+                "Please close and reopen the app to apply the new theme.",
+                parent=self.root,
+            )
+            return
+        self.root.destroy()
 
     # ── Monitor Controls ──────────────────────────────────────────────────────
 
@@ -1420,13 +1854,30 @@ class VlanTesterApp:
                 key          = f"{self.current_vlan or 'UNKNOWN'}->{vlan_name}"
                 reached, rtt = ping(vlan["target"], count=count, timeout=timeout,
                                     source_ip=source_ip)
+                now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 with self._lock:
-                    self.results[key] = {
+                    entry = self.results.get(key) or {}
+                    history = entry.get("history")
+                    if not isinstance(history, list):
+                        # Legacy-format entry — seed history from the single
+                        # stored point so we don't lose prior context.
+                        history = []
+                        if "last" in entry:
+                            history.append({
+                                "ok":   entry.get("last"),
+                                "rtt":  entry.get("rtt"),
+                                "time": entry.get("time"),
+                            })
+                    history.append({"ok": reached, "rtt": rtt, "time": now_str})
+                    history = history[-20:]   # rolling window
+                    entry.update({
                         "last":    reached,
                         "rtt":     rtt,
-                        "time":    datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "time":    now_str,
                         "from_ip": self.my_ip,
-                    }
+                        "history": history,
+                    })
+                    self.results[key] = entry
             else:
                 # Sweep completed without a restart — do countdown
                 save_results(self.results)
@@ -1548,12 +1999,15 @@ class VlanTesterApp:
 
     def on_close(self):
         self.running = False
+        self._snapshot_geometry()
+        save_config(self.config)
         save_results(self.results)
         self.root.destroy()
 
 # ─── Entry Point ──────────────────────────────────────────────────────────────
 
 def main():
+    apply_palette(resolve_theme(load_config().get("theme", "system")))
     root = tk.Tk()
     app  = VlanTesterApp(root)
     root.protocol("WM_DELETE_WINDOW", app.on_close)

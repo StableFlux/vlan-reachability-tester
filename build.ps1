@@ -21,6 +21,19 @@ Write-Host ""
 # Step 1: PyInstaller
 Write-Host "[1/3] Building exe with PyInstaller..." -ForegroundColor Yellow
 
+# Remove any existing exe up front. If it's locked (a prior instance is still
+# running) PyInstaller silently falls back to the stale exe and the rest of
+# the build packages outdated code without warning.
+$exe = "$srcDir\VLANReachabilityTester.exe"
+if (Test-Path $exe) {
+    Remove-Item $exe -Force -ErrorAction SilentlyContinue
+    if (Test-Path $exe) {
+        Write-Host "ERROR: Cannot remove $exe - a running instance is holding it open." -ForegroundColor Red
+        Write-Host "       Close all VLANReachabilityTester.exe processes and re-run the build." -ForegroundColor Red
+        exit 1
+    }
+}
+
 Push-Location $srcDir
 & pyinstaller --onefile --windowed --name "VLANReachabilityTester" vlan_tester_gui.py `
     --distpath "$srcDir" --workpath "$srcDir\build" --specpath "$srcDir" 2>&1 |
@@ -31,7 +44,6 @@ Pop-Location
 Remove-Item "$srcDir\build" -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item "$srcDir\VLANReachabilityTester.spec" -Force -ErrorAction SilentlyContinue
 
-$exe = "$srcDir\VLANReachabilityTester.exe"
 if (-not (Test-Path $exe)) {
     Write-Host "ERROR: PyInstaller failed - exe not found." -ForegroundColor Red
     exit 1
