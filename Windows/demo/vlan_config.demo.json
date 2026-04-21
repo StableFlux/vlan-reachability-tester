@@ -1,0 +1,56 @@
+{
+  "vlans": [
+    {
+      "name": "CORE",
+      "subnet": "10.10.10.",
+      "target": "10.10.10.10",
+      "label": "DNS Server"
+    },
+    {
+      "name": "TRUSTED",
+      "subnet": "10.10.20.",
+      "target": "10.10.20.51",
+      "label": "Admin Workstation"
+    },
+    {
+      "name": "CAMERA",
+      "subnet": "10.10.30.",
+      "target": "10.10.30.10",
+      "label": "Camera NVR"
+    },
+    {
+      "name": "IOT",
+      "subnet": "10.10.40.",
+      "target": "10.10.40.3",
+      "label": "Smart Home Hub"
+    },
+    {
+      "name": "VPN",
+      "subnet": "10.10.50.",
+      "target": "10.10.50.5",
+      "label": "Remote Laptop"
+    },
+    {
+      "name": "LAB",
+      "subnet": "10.10.75.",
+      "target": "10.10.75.100",
+      "label": "Isolated Lab"
+    },
+    {
+      "name": "GUEST",
+      "subnet": "10.10.200.",
+      "target": "10.10.200.159",
+      "label": "Guest Phone"
+    },
+    {
+      "name": "DMZ",
+      "subnet": "10.10.254.",
+      "target": "10.10.254.2",
+      "label": "Public Web Server"
+    }
+  ],
+  "ping_interval": 5,
+  "ping_timeout": 2,
+  "ping_count": 1,
+  "selected_nic": null
+}

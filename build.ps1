@@ -3,20 +3,33 @@
 # Optionally pass a version: build.ps1 -Version 1.2.0.0
 
 param(
-    [string]$Version = "1.0.0.0"
+    [string]$Version = "1.0.0.0",
+    [switch]$Demo
 )
 
 $repoDir    = $PSScriptRoot
 $srcDir     = "$repoDir\Windows"
+$demoDir    = "$srcDir\demo"
 $packageDir = "$repoDir\VLANPackage"
 $assetsDir  = "$packageDir\Assets"
 $output     = "$repoDir\VLANReachabilityTester_$($Version)_x64.msix"
+$demoExe    = "$demoDir\VLANReachabilityTester_Demo.exe"
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  VLAN Reachability Tester - Build $Version" -ForegroundColor Cyan
+$label = if ($Demo) { "Build $Version (DEMO)" } else { "Build $Version" }
+Write-Host "  VLAN Reachability Tester - $label" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+if ($Demo) {
+    foreach ($f in @("vlan_config.demo.json", "vlan_results.demo.json")) {
+        if (-not (Test-Path "$demoDir\$f")) {
+            Write-Host "ERROR: Demo seed file missing: $demoDir\$f" -ForegroundColor Red
+            exit 1
+        }
+    }
+}
 
 # Step 1: PyInstaller
 Write-Host "[1/3] Building exe with PyInstaller..." -ForegroundColor Yellow
@@ -50,6 +63,36 @@ if (-not (Test-Path $exe)) {
 }
 Write-Host "  Exe built: $exe" -ForegroundColor Green
 
+# Demo short-circuit: stage a self-contained portable exe next to the seed
+# JSONs and stop. No MSIX is produced - the portable.flag sentinel tells the
+# app to read/write data in this folder instead of %LOCALAPPDATA%, so the demo
+# never touches production data.
+if ($Demo) {
+    Write-Host "[2/2] Staging portable demo folder..." -ForegroundColor Yellow
+
+    if (Test-Path $demoExe) { Remove-Item $demoExe -Force }
+    Copy-Item $exe $demoExe -Force
+
+    # Portable-mode sentinel (empty file is sufficient; its presence is the signal).
+    [System.IO.File]::WriteAllText("$demoDir\portable.flag", "", [System.Text.UTF8Encoding]::new($false))
+
+    # Runtime copies of the seeds - the app reads these on launch. Overwritten
+    # by the app as it pings; re-run `build.ps1 -Demo` to restore.
+    Copy-Item "$demoDir\vlan_config.demo.json"  "$demoDir\vlan_config.json"  -Force
+    Copy-Item "$demoDir\vlan_results.demo.json" "$demoDir\vlan_results.json" -Force
+
+    Write-Host ""
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host "  DEMO BUILD SUCCESS!" -ForegroundColor Green
+    Write-Host "  $demoDir" -ForegroundColor Green
+    Write-Host "========================================" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "Double-click VLANReachabilityTester_Demo.exe - fully self-contained." -ForegroundColor Cyan
+    Write-Host ""
+    Start-Process explorer.exe $demoDir
+    exit 0
+}
+
 # Step 2: Package layout
 Write-Host "[2/3] Creating package layout..." -ForegroundColor Yellow
 
@@ -60,7 +103,7 @@ Copy-Item $exe $packageDir -Force
 
 # Resize logo to required asset sizes
 Add-Type -AssemblyName System.Drawing
-$logo = [System.Drawing.Image]::FromFile("$repoDir\logo.png")
+$logo = [System.Drawing.Image]::FromFile("$repoDir\images\logo.png")
 
 function Resize-Image($img, $width, $height, $path) {
     $bmp = New-Object System.Drawing.Bitmap($width, $height)

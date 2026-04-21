@@ -52,9 +52,14 @@ def _user_data_dir():
     Frozen (Store/MSIX install): %LOCALAPPDATA%\\VLANReachabilityTester\\ —
     the install dir under WindowsApps is read-only so we must write elsewhere.
     Source checkout: the script directory, so dev workflow is unchanged.
+    Portable mode: a `portable.flag` file next to the exe switches data I/O to
+    the exe directory — used by the demo build to stay off %LOCALAPPDATA%.
     """
     if not getattr(sys, "frozen", False):
         return _script_dir()
+    script_dir = _script_dir()
+    if os.path.exists(os.path.join(script_dir, "portable.flag")):
+        return script_dir
     base = os.environ.get("LOCALAPPDATA") or os.path.expanduser(r"~\AppData\Local")
     path = os.path.join(base, APP_DIR_NAME)
     try:

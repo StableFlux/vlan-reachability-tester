@@ -1,7 +1,7 @@
 # VLAN Reachability Tester
 
 <p align="center">
-  <img src="logo.png" alt="VLAN Reachability Tester" width="180"/>
+  <img src="images/logo.png" alt="VLAN Reachability Tester" width="180"/>
 </p>
 
 Test network reachability across VLANs in real time. Ships as a portable Windows 11 desktop app with a live colour-coded matrix, and as a Linux CLI edition for any Linux system including Raspberry Pi.
@@ -22,11 +22,17 @@ Test network reachability across VLANs in real time. Ships as a portable Windows
 
 ## Screenshots
 
-![Monitor Tab](monitor.png)
-*Monitor tab — live reachability matrix and current sweep status*
+**Monitor tab** — live reachability matrix and current sweep status
 
-![Config Tab](config.png)
-*Config tab — VLAN definitions, NIC selection, and ping settings*
+| Light theme | Dark theme |
+|:-:|:-:|
+| ![Monitor light](images/monitor-light.png) | ![Monitor dark](images/monitor-dark.png) |
+
+**Config tab** — VLAN definitions, NIC selection, and ping settings
+
+| Light theme | Dark theme |
+|:-:|:-:|
+| ![Config light](images/config-light.png) | ![Config dark](images/config-dark.png) |
 
 ---
 

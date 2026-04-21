@@ -24,6 +24,9 @@ VLANReachabilityTester/
 # Compiled executable — distributed via GitHub Releases, not committed
 *.exe
 
+# Portable-mode sentinel — created by `build.ps1 -Demo` alongside the demo exe
+portable.flag
+
 # Python cache
 __pycache__/
 *.pyc

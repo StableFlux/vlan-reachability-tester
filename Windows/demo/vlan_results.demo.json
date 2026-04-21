@@ -1,0 +1,386 @@
+{
+  "TRUSTED->CORE": {
+    "last": true,
+    "rtt": 0.8,
+    "time": "2026-04-21 14:15:02",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->TRUSTED": {
+    "last": true,
+    "rtt": 0.3,
+    "time": "2026-04-21 14:15:04",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->CAMERA": {
+    "last": true,
+    "rtt": 1.1,
+    "time": "2026-04-21 14:15:06",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->IOT": {
+    "last": true,
+    "rtt": 1.3,
+    "time": "2026-04-21 14:15:08",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->VPN": {
+    "last": true,
+    "rtt": 0.9,
+    "time": "2026-04-21 14:15:10",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->LAB": {
+    "last": true,
+    "rtt": 2.1,
+    "time": "2026-04-21 14:15:12",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:15:14",
+    "from_ip": "10.10.20.50"
+  },
+  "TRUSTED->DMZ": {
+    "last": true,
+    "rtt": 1.4,
+    "time": "2026-04-21 14:15:16",
+    "from_ip": "10.10.20.50"
+  },
+  "CORE->CORE": {
+    "last": true,
+    "rtt": 0.2,
+    "time": "2026-04-21 14:17:30",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->TRUSTED": {
+    "last": true,
+    "rtt": 0.7,
+    "time": "2026-04-21 14:17:32",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->CAMERA": {
+    "last": true,
+    "rtt": 0.8,
+    "time": "2026-04-21 14:17:34",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->IOT": {
+    "last": true,
+    "rtt": 1.2,
+    "time": "2026-04-21 14:17:36",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->VPN": {
+    "last": true,
+    "rtt": 0.9,
+    "time": "2026-04-21 14:17:38",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:17:40",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:17:42",
+    "from_ip": "10.10.10.50"
+  },
+  "CORE->DMZ": {
+    "last": true,
+    "rtt": 1.1,
+    "time": "2026-04-21 14:17:44",
+    "from_ip": "10.10.10.50"
+  },
+  "CAMERA->CORE": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:15",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->TRUSTED": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:17",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->CAMERA": {
+    "last": true,
+    "rtt": 0.3,
+    "time": "2026-04-21 14:20:19",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->IOT": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:21",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->VPN": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:23",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:25",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:27",
+    "from_ip": "10.10.30.200"
+  },
+  "CAMERA->DMZ": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:20:29",
+    "from_ip": "10.10.30.200"
+  },
+  "IOT->CORE": {
+    "last": true,
+    "rtt": 1.2,
+    "time": "2026-04-21 14:22:45",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->TRUSTED": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:47",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->CAMERA": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:49",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->IOT": {
+    "last": true,
+    "rtt": 0.3,
+    "time": "2026-04-21 14:22:51",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->VPN": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:53",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:55",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:57",
+    "from_ip": "10.10.40.200"
+  },
+  "IOT->DMZ": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:22:59",
+    "from_ip": "10.10.40.200"
+  },
+  "VPN->CORE": {
+    "last": true,
+    "rtt": 4.2,
+    "time": "2026-04-21 14:25:20",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->TRUSTED": {
+    "last": true,
+    "rtt": 4.8,
+    "time": "2026-04-21 14:25:22",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->CAMERA": {
+    "last": true,
+    "rtt": 5.1,
+    "time": "2026-04-21 14:25:24",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->IOT": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:25:26",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->VPN": {
+    "last": true,
+    "rtt": 3.9,
+    "time": "2026-04-21 14:25:28",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:25:30",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:25:32",
+    "from_ip": "10.10.50.100"
+  },
+  "VPN->DMZ": {
+    "last": true,
+    "rtt": 4.6,
+    "time": "2026-04-21 14:25:34",
+    "from_ip": "10.10.50.100"
+  },
+  "LAB->CORE": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:27:55",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->TRUSTED": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:27:57",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->CAMERA": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:27:59",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->IOT": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:28:01",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->VPN": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:28:03",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->LAB": {
+    "last": true,
+    "rtt": 0.3,
+    "time": "2026-04-21 14:28:05",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:28:07",
+    "from_ip": "10.10.75.200"
+  },
+  "LAB->DMZ": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:28:09",
+    "from_ip": "10.10.75.200"
+  },
+  "GUEST->CORE": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:30",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->TRUSTED": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:32",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->CAMERA": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:34",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->IOT": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:36",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->VPN": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:38",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:30:40",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->GUEST": {
+    "last": true,
+    "rtt": 0.4,
+    "time": "2026-04-21 14:30:42",
+    "from_ip": "10.10.200.100"
+  },
+  "GUEST->DMZ": {
+    "last": true,
+    "rtt": 2.3,
+    "time": "2026-04-21 14:30:44",
+    "from_ip": "10.10.200.100"
+  },
+  "DMZ->CORE": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:10",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->TRUSTED": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:12",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->CAMERA": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:14",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->IOT": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:16",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->VPN": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:18",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->LAB": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:20",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->GUEST": {
+    "last": false,
+    "rtt": null,
+    "time": "2026-04-21 14:33:22",
+    "from_ip": "10.10.254.100"
+  },
+  "DMZ->DMZ": {
+    "last": true,
+    "rtt": 0.5,
+    "time": "2026-04-21 14:33:24",
+    "from_ip": "10.10.254.100"
+  }
+}
